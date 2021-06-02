@@ -32,32 +32,7 @@ drink <- subst$drink
 ## drink5: During the past 30 days, on how many days did you have 4 or more drinks of alcohol in a row (if you are female) or 5 or more drinks of alcohol in a row (if you are male)?
 ## drink6: During the past 30 days, what is the largest number of alcoholic drinks you had in a row?
 
-drinkBin <- drink%>%
-    transmute(
-        everDrink=ifelse(
-            is.na(drink1),
-                  ifelse(drink2=='Never drank alcohol',1,2),
-                  ifelse(drink1=='0 days',1,2)
-          ), ## 1= never drank 2= drank some
-        preteen=ifelse(drink2%in%c('8 years old or younger','9 or 10 years old','11 or 12 years old'),2,1), ## 2=drank pre-teen
-        drink30days=ifelse(drink3=='0 days',1,2), ## 1=no drinks past 30 days, 2=drank past 30 days
-        bought=ifelse(startsWith(as.character(drink4),'Bought'),2,1), ## 2= bought alc in past 30 days
-        drinkHeavy=ifelse(drink5=='0 days',1,2), ## 2=drank heavily in past 30 days
-        drinkVheavy=ifelse(drink6%in%c('6 or 7 drinks','8 or 9 drinks','10 or more drinks'),2,1),
-        drink30days=ifelse(is.na(drink30days),
-                    ifelse(!is.na(drink4),
-                    ifelse(drink4=='Did not drink in past 30 days',1,2),
-                    ifelse(!is.na(drink5),
-                    ifelse(drink6=='Did not drink in past 30 days',1,2),NA)),
-                    drink30days)
-    )
-
-drinkBin2 <- drinkBin
-drinkBin2[!is.na(drinkBin$everDrink)&drinkBin$everDrink==1,c('preteen','drink30days','bought','drinkHeavy','drinkVheavy')] <- NA
-drinkBin2[!is.na(drinkBin$drink30days)&drinkBin$drink30days==1,c('bought','drinkHeavy','drinkVheavy')] <- NA
-drinkBin2[!is.na(drinkBin$drinkHeavy)&drinkBin$drinkHeavy==1,'drinkVheavy'] <- NA
-
-
+## checking depencencies:
 ## distribution of other variables when drink1=="0 days" (i.e. never drank)
 drink%>%filter(drink1=='0 days')%>%map(table,useNA='ifany') ## checks out
 ## distribution of other variables when drink2=="Never drank alcohol"
@@ -69,19 +44,110 @@ drink%>%filter(drink4=='Did not drink in past30 days'|drink6=='Did not drink in 
     select(drink3:drink6)%>%map(table,useNA='ifany') ## checks out
 
 
-drink <- drink%>%
-    mutate(drink7=ifelse(drink3=="0 days"|drink4=='Did not drink in past 30 days'|drink6=='Did not drink in past 30 days',1,2))
+
+drinkBin <- drink%>%
+    mutate(sex=as.numeric(as.character(dat$q2)))%>%
+    transmute(
+        everDrink=ifelse(
+            is.na(drink1),
+                  ifelse(drink2=='Never drank alcohol',1,2),
+                  ifelse(drink1=='0 days',1,2)
+          ), ## 1= never drank 2= drank some
+        preteen=ifelse(is.na(drink2),ifelse(everDrink==1,1,NA),
+                ifelse(drink2%in%c('8 years old or younger','9 or 10 years old','11 or 12 years old'),2,1)), ## 2=drank pre-teen
+        drink30days=ifelse(is.na(drink3),
+                    ifelse(everDrink==1,1,NA),
+                    ifelse(drink3=='0 days',1,2)), ## 1=no drinks past 30 days, 2=drank past 30 days
+        bought=ifelse(startsWith(as.character(drink4),'Bought'),2,1), ## 2= bought alc in past 30 days
+        drinkHeavy=ifelse(
+            is.na(drink5),ifelse(drink30days==1,1,NA),
+                   ifelse(drink5=='0 days',1,2)), ## 2=drank heavily in past 30 days
+        drinkVheavy=ifelse(is.na(drink6),ifelse(drinkHeavy==1,1,NA),
+                    ifelse(drink6%in%c('6 or 7 drinks','8 or 9 drinks','10 or more drinks'),2,1)),
+### fill in some more NAs
+        drinkHeavy=ifelse(is.na(drinkHeavy),
+                   ifelse(is.na(drink6),as.numeric(NA),
+                   ifelse(drink6=='4 drinks'&is.na(sex),as.numeric(NA),
+                   ifelse(drinkVheavy==2|drink6=='5 drinks',2,
+                   ifelse(drink6=='4 drinks',ifelse(sex==2,1,2),1)))),
+                   drinkHeavy),
+        drink30days=ifelse(is.na(drink30days),
+                    ifelse(!is.na(drinkHeavy)&drinkHeavy==2,2,
+                    ifelse(!is.na(drink4),
+                    ifelse(drink4=='Did not drink in past 30 days',1,2),
+                    ifelse(!is.na(drink6),
+                    ifelse(drink6=='Did not drink in past 30 days',1,2),NA))),
+                    drink30days),
+        bought=ifelse(is.na(bought),
+               ifelse((!is.na(drink30days)&drink30days==1)|(!is.na(everDrink)&everDrink==1),1,NA),
+               bought),
+        everDrink=ifelse(
+            is.na(everDrink),
+                  ifelse(drink30days==2|drinkHeavy==2|drinkVheavy==2,2,NA),
+            everDrink)
+    )
 
 
-drinkLCA1 <- drink
 
-drinkLCA1[!is.na(drinkLCA1$drink1)&drinkLCA1$drink1=='0 days',paste0('drink',2:7)] <- NA
-drinkLCA1[!is.na(drinkLCA1$drink2)&drinkLCA1$drink2=='Never drank alcohol',paste0('drink',3:7)] <- NA
-drinkLCA1[!is.na(drinkLCA1$drink7)&drinkLCA1$drink7==1,paste0('drink',3:6)] <- NA
-### compare # drinks in drink6 to # days in drink5 (using sex, dat$q2)
+for(i in 1:(ncol(drinkBin)-1))
+    for(j in (i+1):ncol(drinkBin)){
+        print(paste(names(drinkBin)[i],names(drinkBin)[j]))
+        print(table(drinkBin[[i]],drinkBin[[j]],useNA='always'))
+    }
 
-drinkLCA1$drink5[dat$q2%in%c('','1')&!is.na(drinkLCA1$drink6)&drinkLCA1$drink6%in%c('1 or 2 drinks','3 drinks')] <- NA
-drinkLCA1$drink5[dat$q2=='2'&!is.na(drinkLCA1$drink6)&drinkLCA1$drink6%in%c('1 or 2 drinks','3 drinks','4 drinks')] <- NA
+
+
+#### for conditioning model: set NAs
+drinkBin2 <- drinkBin
+drinkBin2[!is.na(drinkBin$everDrink)&drinkBin$everDrink==1,c('preteen','drink30days','bought','drinkHeavy','drinkVheavy')] <- NA
+drinkBin2[!is.na(drinkBin$drink30days)&drinkBin$drink30days==1,c('bought','drinkHeavy','drinkVheavy')] <- NA
+drinkBin2[!is.na(drinkBin$drinkHeavy)&drinkBin$drinkHeavy==1,'drinkVheavy'] <- NA
+
+
+## look at pot
+## pot 1: During your life, how many times have you used marijuana?
+## pot 2: How old were you when you tried marijuana for the first time?
+## pot 3: During the past 30 days, how many times did you use marijuana?
+
+pot <- subst$pot
+### complex structural 0s between pot1 and pot3
+
+table(pot[[2]][pot[[1]]=='0 times'],useNA='always') ## checks out
+table(pot[[3]][pot[[1]]=='0 times'],useNA='always') ## checks out
+table(pot[[3]][pot[[2]]=='Never tried marijuana'],useNA='always') ## checks out
+
+
+potBin <- pot%>%
+    transmute(
+        everPot=ifelse(
+            is.na(pot1),
+                  ifelse(pot2=='Never tried marijuana',1,2),
+                  ifelse(pot1=='0 times',1,2)
+          ), ## 1= never pot 2= smoked some
+        preteenPot=ifelse(is.na(pot2),NA,
+                   ifelse(pot2%in%c('8 years old or younger','9 or 10 years old','11 or 12 years old'),2,1)), ## 2=pot pre-teen
+        pot30days=ifelse(pot3=='0 times',1,2), ## 1=no pot past 30 days, 2=pot past 30 days
+        pot20plus=ifelse(is.na(pot3),NA,ifelse(pot3%in%c('20 to 39 times', '40 or more times'),2,1))
+    )
+
+
+for(i in 1:3) for(j in (i+1):4){
+                  print(paste(names(potBin)[i],names(potBin)[j]))
+                  print(table(potBin[[i]],potBin[[j]],useNA='always'))
+                  }
+
+potBin2 <- potBin
+potBin2[potBin$evePot
+
+
+pot2 <- pot%>%
+    transmute(
+        ever=factor(ifelse(pot1=='0 times','never smoked','smoked'),
+                    levels=('never smoked','smoked')),
+        ageFirst=pot2,
+        timesEarlier=factor(
+            ifelse(ever=='never smoked','0',
+                   ifelse(pot1
 
 
 
