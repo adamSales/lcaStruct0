@@ -1,0 +1,3 @@
+[submodule "lcaCode"]
+	path = lcaCode
+	url = git@github.com:adamSales/lcaCode.git
