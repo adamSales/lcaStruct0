@@ -6,15 +6,15 @@ drinkMods0 <- map(1:5,
                   )
 
 drinkMods1 <- map(1:5,
-                  ~poLCA(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=.,nrep=20,na.rm=FALSE,verbose=FALSE)
+                  ~poLCA(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=.,nrep=20,na.rm=FALSE,verbose=FALSE,maxiter=2000)
                   )
 
 drinkMods1a <- map(1:5,
-                  ~poLCA(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=.,nrep=20,na.rm=FALSE,verbose=FALSE,impVal=1)
+                  ~poLCA(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=.,nrep=20,na.rm=FALSE,verbose=FALSE,impVal=1,maxiter=2000)
                   )
 
 drinkMods1b <- map(1:5,
-                  ~poLCA(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=.,nrep=20,na.rm=FALSE,verbose=FALSE,impVal=.5)
+                  ~poLCA(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=.,nrep=20,na.rm=FALSE,verbose=FALSE,impVal=.5,maxiter=2000)
                   )
 
 
@@ -27,16 +27,18 @@ bics1b <- map_dbl(drinkMods1b,~.$bic)
 
 pairs(cbind(bics1,bics1a,bics1b))
 
+rbind(bics1,bics1a,bics1b)
+
 ggplot(mapping=aes(x=rep(1:5,2),y=c(bics0,bics1),color=rep(c('Old','New'),each=5)))+geom_point()+geom_line()
 ggplot(mapping=aes(x=rep(2:5,2),y=c(bics0[-1],bics1[-1]),color=rep(c('Old','New'),each=4)))+geom_point()+geom_line()
 
 which.min(bics0)
 which.min(bics1)
 
-mod2 <- poLCAord(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=2,na.rm=FALSE,nrep=50,verbose=FALSE)
-mod2a<- poLCAord(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=2,na.rm=FALSE,nrep=50,verbose=FALSE,impVal=.5)
-mod2b<- poLCAord(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=2,na.rm=FALSE,nrep=50,verbose=FALSE,impVal=1)
-mod30 <- poLCAord(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin,nclass=3,na.rm=FALSE,nrep=50,verbose=FALSE)
+mod2 <- poLCAord(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=2,na.rm=FALSE,nrep=50,verbose=FALSE,maxiter=2000)
+mod2a<- poLCAord(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=2,na.rm=FALSE,nrep=50,verbose=FALSE,impVal=.5,maxiter=2000)
+mod2b<- poLCAord(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin2,nclass=2,na.rm=FALSE,nrep=50,verbose=FALSE,impVal=1,maxiter=2000)
+mod30 <- poLCAord(cbind(everDrink,preteen,drink30days,bought,drinkHeavy,drinkVheavy)~1,data=drinkBin,nclass=3,na.rm=FALSE,nrep=50,verbose=FALSE,maxiter=2000)
 
 save(mod2,mod2a,mod2b,mod30,file='models.RData')
 
