@@ -23,23 +23,6 @@ for(nm in names(subst)){
     subst[[nm]] <- droplevels(subst[[nm]])
 }
 
-### look at pot
-## pot 1: During your life, how many times have you used marijuana?
-## pot 2: How old were you when you tried marijuana for the first time?
-## pot 3: During the past 30 days, how many times did you use marijuana?
-
-pot <- subst$pot
-### complex structural 0s between pot1 and pot3
-
-pot2 <- pot%>%
-    transmute(
-        ever=factor(ifelse(pot1=='0 times','never smoked','smoked'),
-                    levels=('never smoked','smoked')),
-        ageFirst=pot2,
-        timesEarlier=factor(
-            ifelse(ever=='never smoked','0',
-                   ifelse(pot1
-
 ### look at alcohol
 drink <- subst$drink
 ## drink1: During your life, on how many days have you had at least one drink of alcohol?
